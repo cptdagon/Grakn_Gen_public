@@ -7,6 +7,10 @@ import json #used to build api output
 app = Flask(__name__)
 api = Api(app)
 
+#######################
+### server ping api ###
+#######################
+
 class ApiPing(Resource): #pings grakn server for status. 
     def get(self):
         out = subprocess.Popen(['./grakn', 'server', 'status', 'Server_status.txt'],
@@ -16,6 +20,10 @@ class ApiPing(Resource): #pings grakn server for status.
         first = stdout.decode("utf-8").split('\n')[12] #fetches storage status
         second = stdout.decode("utf-8").split('\n')[13] #fetches server status
         return {"storage": first.split(': ')[1],"server":second.split(': ')[1]} #beautyfies output
+
+#######################
+### grakn match api ###
+#######################
 
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
     def get(self,thing,has = "", limit = 100):
@@ -34,14 +42,14 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
 ### data fetch ###
 ##################
 
-        jsonobject = json.dumps({"matched": thing})[:-1]+',"answers": ['
+        jsonobject = json.dumps({"matched": thing})[:-1]+',"answers": [ '
         with GraknClient(uri="localhost:48555") as client:
             with client.session(keyspace="dev_test") as session:
                 with session.transaction().read() as read_transaction:
                     match_iterator = read_transaction.query('match $t isa '+thing+' '+has+';get;limit '+str(limit)+';')
                     answers = match_iterator.collect_concepts()
                     for answer in answers:
-                        jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"attributes": ['
+                        jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"attributes": [ '
                         attributes = answer.attributes()
                         for attribute in attributes:
                             jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()})+','
