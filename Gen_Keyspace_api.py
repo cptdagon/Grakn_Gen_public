@@ -1,5 +1,5 @@
 from flask import Flask, request #flask framework
-from flask_restful import Resource, Api #used to build restful apis using flask
+from flask_restful import Resource, Api, reqparse #used to build restful apis using flask
 from grakn.client import GraknClient #grakn framework
 import subprocess #used to ping server
 import json #used to build api output
@@ -18,25 +18,27 @@ class ApiPing(Resource): #pings grakn server for status.
         return {"storage": first.split(': ')[1],"server":second.split(': ')[1]} #beautyfies output
 
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
-    def get(self, thing):
-        jsonobject = '{"answers": ['
-        with GraknClient(uri="localhost:48555") as client: #grakn client local host port 
-            with client.session(keyspace="dev_test") as session: #keyspace name
-                with session.transaction().read() as read_transaction:
-                    match_iterator = read_transaction.query('match $t isa '+thing+';get;') #dynamic object match to find data of type
-                    answers = match_iterator.collect_concepts() 
-                    for answer in answers:
-                       jsonobject = jsonobject + json.dumps({"id":answer.id})+','
-                    jsonobject = jsonobject[:-1]+']}'
-                    return json.loads(jsonobject)
+    def get(self,thing,has = "", limit = 100):
 
-class apiTemp(Resource): #builds a basic data fetch and returns the list of ids $
-    def get(self):
-        jsonobject = json.dumps({"matched": "person"})[:-1]+',"answers": ['
+##########################
+### parameter formater ###
+##########################
+
+        split = has.split(',') #has string in format 'name="Jim",gender="male"'
+        has = ""
+        if split[0] != '':
+            for hasquery in split:
+                has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
+
+##################
+### data fetch ###
+##################
+
+        jsonobject = json.dumps({"matched": thing})[:-1]+',"answers": ['
         with GraknClient(uri="localhost:48555") as client:
             with client.session(keyspace="dev_test") as session:
                 with session.transaction().read() as read_transaction:
-                    match_iterator = read_transaction.query('match $t isa person;get;')
+                    match_iterator = read_transaction.query('match $t isa '+thing+' '+has+';get;limit '+str(limit)+';')
                     answers = match_iterator.collect_concepts()
                     for answer in answers:
                         jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"attributes": ['
@@ -47,9 +49,12 @@ class apiTemp(Resource): #builds a basic data fetch and returns the list of ids 
                     jsonobject = jsonobject[:-1]+']}'
                     return json.loads(jsonobject)
 
+######################
+### api references ###
+######################
+
 api.add_resource(ApiPing, '/ping')
-api.add_resource(dataFetch, '/fetch/<string:thing>')
-api.add_resource(apiTemp, '/')
+api.add_resource(dataFetch, '/fetch/<string:thing>', '/fetch/<string:thing>/<string:has>', '/fetch/<string:thing>/<int:limit>', '/fetch/<string:thing>/<string:has>/<int:limit>')
 
 if __name__ == '__main__':
    app.run(debug=True)
