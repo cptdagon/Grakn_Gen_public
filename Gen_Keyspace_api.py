@@ -28,9 +28,7 @@ class ApiPing(Resource): #pings grakn server for status.
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
     def get(self,thing,has = "", limit = 100):
 
-##########################
-### parameter formater ###
-##########################
+        ### parameter formater ###
 
         split = has.split(',') #has string in format 'name="Jim",gender="male"'
         has = ""
@@ -38,9 +36,7 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
             for hasquery in split:
                 has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
 
-##################
-### data fetch ###
-##################
+        ### data fetch ###
 
         jsonobject = json.dumps({"matched": thing})[:-1]+',"answers": [ '
         with GraknClient(uri="localhost:48555") as client:
