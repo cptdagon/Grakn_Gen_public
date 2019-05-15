@@ -26,30 +26,39 @@ class ApiPing(Resource): #pings grakn server for status.
 #######################
 
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
-    def get(self,thing,has = "", limit = 100):
+    def get(self,kspace,thing,has = "", limit = 100):
 
         ### parameter formater ###
-
         split = has.split(',') #has string in format 'name="Jim",gender="male"'
         has = ""
         if split[0] != '':
             for hasquery in split:
                 has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
-
+        thingName = thing.split('-')[0]
+        thingType = thing.split('-')[1]
         ### data fetch ###
 
-        jsonobject = json.dumps({"matched": thing})[:-1]+',"answers": [ '
+        jsonobject = json.dumps({"matched": thingName, "matchedType": thingType})[:-1]+',"answers": [ '
         with GraknClient(uri="localhost:48555") as client:
-            with client.session(keyspace="dev_test") as session:
+            with client.session(keyspace=kspace) as session:
                 with session.transaction().read() as read_transaction:
-                    match_iterator = read_transaction.query('match $t isa '+thing+' '+has+';get;limit '+str(limit)+';')
+                    if thingType == "entity":
+                        match_iterator = read_transaction.query('match $t isa '+thingName+' '+has+';get;limit '+str(limit)+';')
+                    elif thingType == "relation":
+                        match_iterator = read_transaction.query('match $t($a,$b) isa '+thingName+' '+has+';get $t;limit '+str(limit)+';')
+                    else:
+                        Flask.abort(400)
                     answers = match_iterator.collect_concepts()
                     for answer in answers:
-                        jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"attributes": [ '
+                        jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"owns":[{ "attributes": [ '
                         attributes = answer.attributes()
                         for attribute in attributes:
-                            jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()})+','
-                        jsonobject = jsonobject[:-1]+']},'
+                            jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
+                        jsonobject = jsonobject[:-1]+'], "roles": [ '
+                        roles = answer.roles()
+                        for role in roles:
+                            jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+                        jsonobject = jsonobject[:-1]+']}]},'
                     jsonobject = jsonobject[:-1]+']}'
                     return json.loads(jsonobject)
 
@@ -58,7 +67,11 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
 ######################
 
 api.add_resource(ApiPing, '/ping')
-api.add_resource(dataFetch, '/fetch/<string:thing>', '/fetch/<string:thing>/<string:has>', '/fetch/<string:thing>/<int:limit>', '/fetch/<string:thing>/<string:has>/<int:limit>')
+api.add_resource(dataFetch,
+    '/match/<string:kspace>/<string:thing>',
+    '/match/<string:kspace>/<string:thing>/<string:has>',
+    '/match/<string:kspace>/<string:thing>/<int:limit>',
+    '/match/<string:kspace>/<string:thing>/<string:has>/<int:limit>')
 
 if __name__ == '__main__':
    app.run(debug=True)
