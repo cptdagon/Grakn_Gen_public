@@ -28,6 +28,8 @@ class ApiPing(Resource): #pings grakn server for status.
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
     def get(self,kspace,thing,has = "", limit = 100):
 
+        Key = request.headers.get('Api-Key')
+        print (Key)
         ### parameter formater ###
         split = has.split(',') #has string in format 'name="Jim",gender="male"'
         has = ""
@@ -35,7 +37,7 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
             for hasquery in split:
                 has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
         thingName = thing.split('-')[0]
-        thingType = thing.split('-')[1]
+        thingType = thing.split('-')[1].lower()
         ### data fetch ###
 
         jsonobject = json.dumps({"matched": thingName, "matchedType": thingType})[:-1]+',"answers": [ '
@@ -46,10 +48,15 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
                         match_iterator = read_transaction.query('match $t isa '+thingName+' '+has+';get;limit '+str(limit)+';')
                     elif thingType == "relation":
                         match_iterator = read_transaction.query('match $t($a,$b) isa '+thingName+' '+has+';get $t;limit '+str(limit)+';')
+                    elif thingType == "attribute":
+                        Flask.abort(501)
                     else:
                         Flask.abort(400)
-                    answers = match_iterator.collect_concepts()
+                    answers = match_iterator.collect_concepts()	
                     for answer in answers:
+                        players = answer.role_players()
+                        for player in players:
+                            print(player.id)
                         jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"owns":[{ "attributes": [ '
                         attributes = answer.attributes()
                         for attribute in attributes:
