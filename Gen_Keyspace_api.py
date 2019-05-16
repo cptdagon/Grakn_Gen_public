@@ -22,31 +22,46 @@ class ApiPing(Resource): #pings grakn server for status.
         return {"storage": first.split(': ')[1],"server":second.split(': ')[1]} #beautyfies output
 
 class builders():
-    def entity_builder(entities):
-        raise NotImplementedError()
 
-    def attribute_builder(attributes):
+    @classmethod
+    def entities_builder(cls,entities):
+        raise NotImplementedError()
         jsonobject = ""
-        for attribute in attributes:
+        for entity in entities: #abstract to entity builder 
+            jsonobject = jsonobject + json.dumps({"id":entity.id})[:-1]+',"contains":[{ '
+            jsonobject = jsonobject + cls.attributes_builder(entity.attributes())
+            jsonobject = jsonobject + cls.role_builder(entity.roles())
+            jsonobject = jsonobject[:-1]+'}]},'
+        jsonobject = jsonobject[:-1]
+        return jsonobject
+
+    @classmethod
+    def attributes_builder(cls,attributes):
+        jsonobject = "attributes:[ "
+        for attribute in attributes: #abstract to attribute builder
             jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
+            jsonobject = jsonobject + cls.attributes_builder(attribute.attributes())
+            jsonobject = jsonobject + cls.role_builder(attribute.roles())
         jsonobject = jsonobject[:-1]+'],'
         return jsonobject
 
-    def role_builder(roles):
-        jsonobject = ""
+    @classmethod
+    def role_builder(cls,roles):
+        jsonobject = "roles:[ "
         for role in roles:
             jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
         jsonobject = jsonobject[:-1]+'],'
         return jsonobject
 
-    def key_builder(keys):
-        jsonobject = ""
+    @classmethod
+    def key_builder(cls,keys):
+        jsonobject = "keys:[ "
         for key in keys:
             jsonobject = jsonobject + json.dumps({"label":key.label()},default = str)+','
         jsonobject = jsonobject[:-1]+'],'
         return jsonobject
-
-    def relation_builder(relations):
+    @classmethod
+    def relation_builder(cls,relations):
         raise NotImplementedError()
 
 
