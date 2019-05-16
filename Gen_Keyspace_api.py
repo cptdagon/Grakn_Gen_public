@@ -21,6 +21,35 @@ class ApiPing(Resource): #pings grakn server for status.
         second = stdout.decode("utf-8").split('\n')[13] #fetches server status
         return {"storage": first.split(': ')[1],"server":second.split(': ')[1]} #beautyfies output
 
+class builders():
+    def entity_builder(entities):
+        raise NotImplementedError()
+
+    def attribute_builder(attributes):
+        jsonobject = ""
+        for attribute in attributes:
+            jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
+        jsonobject = jsonobject[:-1]+'],'
+        return jsonobject
+
+    def role_builder(roles):
+        jsonobject = ""
+        for role in roles:
+            jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+        jsonobject = jsonobject[:-1]+'],'
+        return jsonobject
+
+    def key_builder(keys):
+        jsonobject = ""
+        for key in keys:
+            jsonobject = jsonobject + json.dumps({"label":key.label()},default = str)+','
+        jsonobject = jsonobject[:-1]+'],'
+        return jsonobject
+
+    def relation_builder(relations):
+        raise NotImplementedError()
+
+
 #######################
 ### grakn match api ###
 #######################
@@ -46,28 +75,46 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
                 with session.transaction().read() as read_transaction:
                     if thingType == "entity":
                         match_iterator = read_transaction.query('match $t isa '+thingName+' '+has+';get;limit '+str(limit)+';')
+                        answers = match_iterator.collect_concepts()
+                        for answer in answers:
+                            #players = answer.role_players()attributes = answer.attributes()
+                            #for player in players:
+                            #    print(player.id)
+                            jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"contains":[{ "attributes": [ '
+                            attributes = answer.attributes()
+                            for attribute in attributes:
+                                jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
+                            jsonobject = jsonobject[:-1]+'], "roles": [ '
+                            roles = answer.roles()
+                            for role in roles:
+                                jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+                            jsonobject = jsonobject[:-1]+']}]},'
+                        jsonobject = jsonobject[:-1]+']}'
+                        return json.loads(jsonobject)
+
                     elif thingType == "relation":
                         match_iterator = read_transaction.query('match $t($a,$b) isa '+thingName+' '+has+';get $t;limit '+str(limit)+';')
+                        answers = match_iterator.collect_concepts()
+                        for answer in answers:
+                            players = answer.role_players()
+                            for player in players:
+                                print(player.id)
+                            jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"contains":[{ "attributes": [ '
+                            attributes = answer.attributes()
+                            for attribute in attributes:
+                                jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
+                            jsonobject = jsonobject[:-1]+'], "roles": [ '
+                            roles = answer.roles()
+                            for role in roles:
+                                jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+                            jsonobject = jsonobject[:-1]+']}]},'
+                        jsonobject = jsonobject[:-1]+']}'
+                        return json.loads(jsonobject)
+
                     elif thingType == "attribute":
                         Flask.abort(501)
                     else:
                         Flask.abort(400)
-                    answers = match_iterator.collect_concepts()	
-                    for answer in answers:
-                        players = answer.role_players()
-                        for player in players:
-                            print(player.id)
-                        jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"owns":[{ "attributes": [ '
-                        attributes = answer.attributes()
-                        for attribute in attributes:
-                            jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
-                        jsonobject = jsonobject[:-1]+'], "roles": [ '
-                        roles = answer.roles()
-                        for role in roles:
-                            jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
-                        jsonobject = jsonobject[:-1]+']}]},'
-                    jsonobject = jsonobject[:-1]+']}'
-                    return json.loads(jsonobject)
 
 ######################
 ### api references ###
