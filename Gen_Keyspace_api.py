@@ -21,49 +21,123 @@ class ApiPing(Resource): #pings grakn server for status.
         second = stdout.decode("utf-8").split('\n')[13] #fetches server status
         return {"storage": first.split(': ')[1],"server":second.split(': ')[1]} #beautyfies output
 
+#####################
+### json builders ###
+#####################
+
 class builders():
 
     @classmethod
-    def entities_builder(cls,entities):
-        raise NotImplementedError()
+    def entity_builder(cls,entity): #builds a entity along with its associated attributes, roles, and keys
         jsonobject = ""
-        for entity in entities: #abstract to entity builder 
-            jsonobject = jsonobject + json.dumps({"id":entity.id})[:-1]+',"contains":[{ '
-            jsonobject = jsonobject + cls.attributes_builder(entity.attributes())
-            jsonobject = jsonobject + cls.role_builder(entity.roles())
-            jsonobject = jsonobject[:-1]+'}]},'
+        jsonobject = jsonobject + json.dumps({"id":entity.id})[:-1]+',"contains":[{ '
+        jsonobject = jsonobject + cls.attributes_builder(entity.attributes())
+        jsonobject = jsonobject + cls.roles_builder(entity.roles())
+        jsonobject = jsonobject + cls.keys_builder(entity.keys())
+        jsonobject = jsonobject[:-1]+'}]},'
+        return jsonobject
+
+    @classmethod
+    def entities_builder(cls,entities): #builds a list of entities
+        jsonobject = ""
+        for entity in entities:
+            jsonobject = jsonobject + cls.entity_builder(entity)
         jsonobject = jsonobject[:-1]
         return jsonobject
 
     @classmethod
-    def attributes_builder(cls,attributes):
-        jsonobject = "attributes:[ "
-        for attribute in attributes: #abstract to attribute builder
-            jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
-            jsonobject = jsonobject + cls.attributes_builder(attribute.attributes())
-            jsonobject = jsonobject + cls.role_builder(attribute.roles())
+    def attribute_builder(cls,attribute): #builds an attribute along with its owned attributes, roles, and keys
+        jsonobject = ""
+        jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)[:-1]+','
+        jsonobject = jsonobject + cls.attributes_builder(attribute.attributes())
+        jsonobject = jsonobject + cls.roles_builder(attribute.roles())[:-1]+'},'
+        return jsonobject
+
+    @classmethod
+    def attributes_builder(cls,attributes): #builds a list of attributes
+        jsonobject = '"attributes":[ '
+        for attribute in attributes:
+            jsonobject = jsonobject + cls.attribute_builder(attribute)
         jsonobject = jsonobject[:-1]+'],'
         return jsonobject
 
     @classmethod
-    def role_builder(cls,roles):
-        jsonobject = "roles:[ "
+    def role_builder(cls,role): #builds a role
+        jsonobject = ""
+        jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+        return jsonobject
+
+    @classmethod
+    def roles_builder(cls,roles): #builds a list of roles
+        jsonobject = '"roles":[ '
         for role in roles:
-            jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+            jsonobject = jsonobject + cls.role_builder(role)
         jsonobject = jsonobject[:-1]+'],'
         return jsonobject
 
     @classmethod
-    def key_builder(cls,keys):
-        jsonobject = "keys:[ "
+    def key_builder(cls,key): #builds a key
+        jsonobject = ""
+        jsonobject = jsonobject + json.dumps({"label":key.label()},default = str)+','
+        return jsonobject
+
+    @classmethod
+    def keys_builder(cls,keys): #builds a list of keys
+        jsonobject = '"keys":[ '
         for key in keys:
-            jsonobject = jsonobject + json.dumps({"label":key.label()},default = str)+','
+            jsonobject = jsonobject + cls.key_builder(key)
         jsonobject = jsonobject[:-1]+'],'
         return jsonobject
-    @classmethod
-    def relation_builder(cls,relations):
-        raise NotImplementedError()
 
+    @classmethod
+    def player_builder(cls,player):
+        jsonobject = ""
+        print(player.id)
+        jsonobject = jsonobject + json.dumps({"id":player.id})[:-1]+','
+        if player.is_attribute():
+            jsonobject = jsonobject + '"attribute":[{ '
+            jsonobject = jsonobject + cls.attribute_builder(player)
+            jsonobject = jsonobject[:-1] + '}],"entity":[],"relation":[],'
+        elif player.is_entity():
+            jsonobject = jsonobject + '"attribute":[],"entity":[ '
+            jsonobject = jsonobject + cls.entity_builder(player)
+            jsonobject = jsonobject[:-1] + '],"relation":[]'
+        elif player.is_relation():
+            jsonobject = jsonobject + '"attribtue":[],"entity":[],"relation":[ '
+            jsonobject = jsonobject + cls.relation_builder(player)
+            jsonobject = jsonobject[:-1] + ']'
+        else:
+            jsonobject = jsonobject + '"attribute":[],"entity":[],"relation":[]'
+        jsonobject = jsonobject + '},'
+        return jsonobject
+
+    @classmethod
+    def players_builder(cls,players):
+        print(players)
+        jsonobject = '"players":[ '
+        for player in players:
+            jsonobject = jsonobject + cls.player_builder(player)
+        jsonobject = jsonobject[:-1] + '],'
+        return jsonobject
+
+    @classmethod
+    def relation_builder(cls,relation): #builds a relation with its players, and owned attributes, roles, and keys
+        jsonobject = ""
+        jsonobject = jsonobject + json.dumps({"id":relation.id})[:-1]+',"contains":[{ '
+        jsonobject = jsonobject + cls.players_builder(relation.role_players())
+        jsonobject = jsonobject + cls.attributes_builder(relation.attributes())
+        jsonobject = jsonobject + cls.roles_builder(relation.roles())
+        jsonobject = jsonobject + cls.keys_builder(relation.keys())
+        jsonobject = jsonobject[:-1]+'}]},'
+        return jsonobject
+
+    @classmethod
+    def relations_builder(cls,relations): #builds a list of relations
+        jsonobject = ""
+        for relation in relations:
+            jsonobject = jsonobject + cls.relation_builder(relation)
+        jsonobject = jsonobject[:-1]
+        return jsonobject
 
 #######################
 ### grakn match api ###
@@ -131,10 +205,22 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
                     else:
                         Flask.abort(400)
 
+class testapis(Resource):
+    def get(self):
+        jsonobject = json.dumps({"matched": "friendship", "matchedType": "relationship"})[:-1]+',"answers": [ '
+        with GraknClient(uri="localhost:48555") as client:
+            with client.session(keyspace="dev_test2") as session:
+                with session.transaction().read() as read_transaction:
+                    match_iterator = read_transaction.query('match $t isa friendship ;get;limit 1;')
+                    answers = match_iterator.collect_concepts()
+                    jsonobject = jsonobject + builders.relations_builder(answers)
+                    jsonobject = jsonobject[:-1]+'}]}'
+                    return json.loads(jsonobject)
+
 ######################
 ### api references ###
 ######################
-
+api.add_resource(testapis, '/test')
 api.add_resource(ApiPing, '/ping')
 api.add_resource(dataFetch,
     '/match/<string:kspace>/<string:thing>',
