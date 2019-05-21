@@ -29,8 +29,7 @@ class builders():
 
     @classmethod
     def entity_builder(cls,entity): #builds a entity along with its associated attributes, roles, and keys
-        jsonobject = ""
-        jsonobject = jsonobject + json.dumps({"id":entity.id})[:-1]+',"contains":[{ '
+        jsonobject = json.dumps({"id":entity.id, "label":entity.type().label()})[:-1]+',"contains":[{ '
         jsonobject = jsonobject + cls.attributes_builder(entity.attributes())
         jsonobject = jsonobject + cls.roles_builder(entity.roles())
         jsonobject = jsonobject + cls.keys_builder(entity.keys())
@@ -47,8 +46,7 @@ class builders():
 
     @classmethod
     def attribute_builder(cls,attribute): #builds an attribute along with its owned attributes, roles, and keys
-        jsonobject = ""
-        jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)[:-1]+','
+        jsonobject = json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)[:-1]+','
         jsonobject = jsonobject + cls.attributes_builder(attribute.attributes())
         jsonobject = jsonobject + cls.roles_builder(attribute.roles())[:-1]+'},'
         return jsonobject
@@ -63,8 +61,7 @@ class builders():
 
     @classmethod
     def role_builder(cls,role): #builds a role
-        jsonobject = ""
-        jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
+        jsonobject = json.dumps({"label":role.label()}, default = str)+','
         return jsonobject
 
     @classmethod
@@ -77,8 +74,7 @@ class builders():
 
     @classmethod
     def key_builder(cls,key): #builds a key
-        jsonobject = ""
-        jsonobject = jsonobject + json.dumps({"label":key.label()},default = str)+','
+        jsonobject = json.dumps({"label":key.label()},default = str)+','
         return jsonobject
 
     @classmethod
@@ -91,9 +87,7 @@ class builders():
 
     @classmethod
     def player_builder(cls,player):
-        jsonobject = ""
-        print(player.id)
-        jsonobject = jsonobject + json.dumps({"id":player.id})[:-1]+','
+        jsonobject = '{'
         if player.is_attribute():
             jsonobject = jsonobject + '"attribute":[{ '
             jsonobject = jsonobject + cls.attribute_builder(player)
@@ -113,7 +107,6 @@ class builders():
 
     @classmethod
     def players_builder(cls,players):
-        print(players)
         jsonobject = '"players":[ '
         for player in players:
             jsonobject = jsonobject + cls.player_builder(player)
@@ -122,8 +115,7 @@ class builders():
 
     @classmethod
     def relation_builder(cls,relation): #builds a relation with its players, and owned attributes, roles, and keys
-        jsonobject = ""
-        jsonobject = jsonobject + json.dumps({"id":relation.id})[:-1]+',"contains":[{ '
+        jsonobject = json.dumps({"id":relation.id, "label":relation.type().label()})[:-1]+',"contains":[{ '
         jsonobject = jsonobject + cls.players_builder(relation.role_players())
         jsonobject = jsonobject + cls.attributes_builder(relation.attributes())
         jsonobject = jsonobject + cls.roles_builder(relation.roles())
