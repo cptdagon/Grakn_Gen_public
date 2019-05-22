@@ -46,9 +46,9 @@ class builders():
 
     @classmethod
     def attribute_builder(cls,attribute): #builds an attribute along with its owned attributes, roles, and keys
-        jsonobject = json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)[:-1]+','
+        jsonobject = json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)[:-1]+',"contains":[{ '
         jsonobject = jsonobject + cls.attributes_builder(attribute.attributes())
-        jsonobject = jsonobject + cls.roles_builder(attribute.roles())[:-1]+'},'
+        jsonobject = jsonobject + cls.roles_builder(attribute.roles())[:-1]+'}]},'
         return jsonobject
 
     @classmethod
@@ -89,17 +89,17 @@ class builders():
     def player_builder(cls,player):
         jsonobject = '{'
         if player.is_attribute():
-            jsonobject = jsonobject + '"attribute":[{ '
-            jsonobject = jsonobject + cls.attribute_builder(player)
-            jsonobject = jsonobject[:-1] + '}],"entity":[],"relation":[],'
+            jsonobject = jsonobject + '"attribute":[{ ' + cls.attribute_builder(player)[:-1] + '}],"entity":[],"relation":[],'
+            #jsonobject = jsonobject + cls.attribute_builder(player)
+            #jsonobject = jsonobject[:-1] + '}],"entity":[],"relation":[],'
         elif player.is_entity():
-            jsonobject = jsonobject + '"attribute":[],"entity":[ '
-            jsonobject = jsonobject + cls.entity_builder(player)
-            jsonobject = jsonobject[:-1] + '],"relation":[]'
+            jsonobject = jsonobject + '"attribute":[],"entity":[ ' + cls.entity_builder(player)[:-1] + '],"relation":[]'
+            #jsonobject = jsonobject + cls.entity_builder(player)
+            #jsonobject = jsonobject[:-1] + '],"relation":[]'
         elif player.is_relation():
-            jsonobject = jsonobject + '"attribtue":[],"entity":[],"relation":[ '
-            jsonobject = jsonobject + cls.relation_builder(player)
-            jsonobject = jsonobject[:-1] + ']'
+            jsonobject = jsonobject + '"attribtue":[],"entity":[],"relation":[ ' + cls.relation_builder(player)[:-1] + ']'
+            #jsonobject = jsonobject + cls.relation_builder(player)
+            #jsonobject = jsonobject[:-1] + ']'
         else:
             jsonobject = jsonobject + '"attribute":[],"entity":[],"relation":[]'
         jsonobject = jsonobject + '},'
