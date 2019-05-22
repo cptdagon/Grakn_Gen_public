@@ -30,9 +30,10 @@ class builders():
     @classmethod
     def entity_builder(cls,entity): #builds a entity along with its associated attributes, roles, and keys
         jsonobject = json.dumps({"id":entity.id, "label":entity.type().label()})[:-1]+',"contains":[{ '
-        jsonobject = jsonobject + cls.attributes_builder(entity.attributes())
-        jsonobject = jsonobject + cls.roles_builder(entity.roles())
-        jsonobject = jsonobject + cls.keys_builder(entity.keys())
+        #jsonobject = jsonobject + cls.attributes_builder(entity.attributes())
+        #jsonobject = jsonobject + cls.roles_builder(entity.roles())
+        #jsonobject = jsonobject + cls.keys_builder(entity.keys())
+        jsonobject = jsonobject + ( cls.attributes_builder(entity.attributes()) + cls.roles_builder(entity.roles()) + cls.keys_builder(entity.keys()) )
         jsonobject = jsonobject[:-1]+'}]},'
         return jsonobject
 
@@ -116,10 +117,11 @@ class builders():
     @classmethod
     def relation_builder(cls,relation): #builds a relation with its players, and owned attributes, roles, and keys
         jsonobject = json.dumps({"id":relation.id, "label":relation.type().label()})[:-1]+',"contains":[{ '
-        jsonobject = jsonobject + cls.players_builder(relation.role_players())
-        jsonobject = jsonobject + cls.attributes_builder(relation.attributes())
-        jsonobject = jsonobject + cls.roles_builder(relation.roles())
-        jsonobject = jsonobject + cls.keys_builder(relation.keys())
+        #jsonobject = jsonobject + cls.players_builder(relation.role_players())
+        #jsonobject = jsonobject + cls.attributes_builder(relation.attributes())
+        #jsonobject = jsonobject + cls.roles_builder(relation.roles())
+        #jsonobject = jsonobject + cls.keys_builder(relation.keys())
+        jsonobject = jsonobject + ( cls.players_builder(relation.role_players()) + cls.attributes_builder(relation.attributes()) + cls.roles_builder(relation.roles()) + cls.keys_builder(relation.keys()) )
         jsonobject = jsonobject[:-1]+'}]},'
         return jsonobject
 
