@@ -1,4 +1,4 @@
-from flask import Flask, request #flask framework
+from flask import Flask, abort, request #flask framework
 from flask_restful import Resource, Api, reqparse #used to build restful apis using flask
 from grakn.client import GraknClient #grakn framework
 import subprocess #used to ping server
@@ -136,6 +136,34 @@ class builders():
 #######################
 ### grakn match api ###
 #######################
+class genApiFetch(Resource):  #### basic fetch request ####
+    def get(self,
+            kspace,       #### mandatory #### keyspace name ####
+            thing,        #### mandatory #### thing to search for => format thing type = thing name => e.g: 'attribute=name' => match $t isa name ####
+            has = " ",    #### not mandatory #### search parameters to either filter or fetch extra data from the database ####
+                                             #### parameter name => parameter value  => e.g: 'name="Jim"' ####
+                                             #### parametre name => parameter variable => e.g: 'name=$n' ####
+                                             #### multiple values are comma seperated and types of values can be mixed => e.g: 'name=$n,eyeColor="blue"' ####
+            get = " ",    #### not mandatory #### specify variables to fetch data from => e.g: '$t,$n' ####
+            limit = 100): #### not mandatory #### fetch quantity limit => used to improve response time of api ####
+        #### parameters ####
+        split = has.split(',')
+        has = ""
+        if split[0] != ' ':
+            for hasquery in split:
+                has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
+        thingName = thing.split('=')[1]
+        thingType = thing.split('=')[0].lower()
+        #### data fetch ####
+        jsonobject = json.dumps({"matchedName": thingName, "matchedType": thingType})[:-1]+', "answers":[ '
+        with GraknClient(uri="localhost:48555") as client:
+            with client.session(keyspace=kspace) as session:
+                with session.transaction().read() as read_transaction:
+                    match_iterator = read_transaction.query('match $t isa '+thingName+' '+has+';get '+get+';limit '+str(limit)+';')
+                    answers = match_iterator.collect_concepts()
+                    jsonobject = jsonobject + builders.relations_builder(answers)
+                    jsonobject = jsonobject[:-1]+'}]}'
+                    return json.loads(jsonobject)
 
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
     def get(self,kspace,thing,has = "", limit = 100):
@@ -148,8 +176,8 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
         if split[0] != '':
             for hasquery in split:
                 has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
-        thingName = thing.split('-')[0]
-        thingType = thing.split('-')[1].lower()
+        thingName = thing.split('=')[1]
+        thingType = thing.split('=')[0].lower()
         ### data fetch ###
 
         jsonobject = json.dumps({"matched": thingName, "matchedType": thingType})[:-1]+',"answers": [ '
@@ -195,9 +223,9 @@ class dataFetch(Resource): #builds a basic data fetch and returns the list of id
                         return json.loads(jsonobject)
 
                     elif thingType == "attribute":
-                        Flask.abort(501)
+                        abort(501)
                     else:
-                        Flask.abort(400)
+                        abort(400)
 
 class testapis(Resource):
     def get(self):
@@ -214,6 +242,11 @@ class testapis(Resource):
 ######################
 ### api references ###
 ######################
+api.add_resource(genApiFetch, 
+    '/fetch/<string:kspace>/<string:thing>',
+    '/fetch/<string:kspace>/<string:thing>/<string:has>',
+    '/fetch/<string:kspace>/<string:thing>/<int:limit>',
+    '/fetch/<string:kspace>/<string:thing>/<string:has>/<int:limit>')
 api.add_resource(testapis, '/test')
 api.add_resource(ApiPing, '/ping')
 api.add_resource(dataFetch,
