@@ -133,6 +133,35 @@ class builders():
         jsonobject = jsonobject[:-1]
         return jsonobject
 
+    @classmethod
+    def objectSwitch(cls,answers):
+        a = False
+        e = False
+        r = False
+        jsonobject = ""
+        #### determine the contents of the answers list ####
+        for answer in answers:
+            if answer.is_entity():
+                e = True
+            elif answer.is_attribute():
+                a = True
+            elif answer.is_relation():
+                r = True
+            else:
+                #### this shouldn't execute ####
+                abort(500, "you shouldn't be here, leave. now.")
+        #### test results ####
+        if (a & (not (e | r))): # <=invalid syntax at ':'
+            jsonobject = jsonobject + '{' +builders.attributes_builder(answers)
+        elif (e and (not (a or r))):
+            jsonobject = jsonobject + builders.entities_builder(answers)
+        elif (r and (not (a or e))):
+            jsonobject = jsonobject + builders.relations_builder(answers)
+        else:
+            #### neither should this ####
+            abort(500, "well this is rather awkward... :| ")
+        return jsonobject
+
 #######################
 ### grakn match api ###
 #######################
@@ -161,13 +190,16 @@ class genApiFetch(Resource):  #### basic fetch request ####
                 with session.transaction().read() as read_transaction:
                     match_iterator = read_transaction.query('match $t isa '+thingName+' '+has+';get '+get+';limit '+str(limit)+';')
                     answers = match_iterator.collect_concepts()
-                    jsonobject = jsonobject + builders.relations_builder(answers)
+                    jsonobject = jsonobject + builders.objectSwitch(answers)
                     jsonobject = jsonobject[:-1]+'}]}'
-                    return json.loads(jsonobject)
+                    return json.loads(jsonobject) # json.laods
 
+
+#### DEPRICATED ####
 class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
     def get(self,kspace,thing,has = "", limit = 100):
-
+        abort(410)
+        abort(response('Depricated Api'))
         Key = request.headers.get('Api-Key')
         print (Key)
         ### parameter formater ###
@@ -242,7 +274,7 @@ class testapis(Resource):
 ######################
 ### api references ###
 ######################
-api.add_resource(genApiFetch, 
+api.add_resource(genApiFetch,
     '/fetch/<string:kspace>/<string:thing>',
     '/fetch/<string:kspace>/<string:thing>/<string:has>',
     '/fetch/<string:kspace>/<string:thing>/<int:limit>',
