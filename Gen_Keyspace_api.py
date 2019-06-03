@@ -194,71 +194,6 @@ class genApiFetch(Resource):  #### basic fetch request ####
                     jsonobject = jsonobject[:-1]+'}]}'
                     return json.loads(jsonobject) # json.laods
 
-
-#### DEPRICATED ####
-class dataFetch(Resource): #builds a basic data fetch and returns the list of ids for the data
-    def get(self,kspace,thing,has = "", limit = 100):
-        abort(410)
-        abort(response('Depricated Api'))
-        Key = request.headers.get('Api-Key')
-        print (Key)
-        ### parameter formater ###
-        split = has.split(',') #has string in format 'name="Jim",gender="male"'
-        has = ""
-        if split[0] != '':
-            for hasquery in split:
-                has = has + ',has '+hasquery.split('=')[0]+' '+hasquery.split('=')[1]
-        thingName = thing.split('=')[1]
-        thingType = thing.split('=')[0].lower()
-        ### data fetch ###
-
-        jsonobject = json.dumps({"matched": thingName, "matchedType": thingType})[:-1]+',"answers": [ '
-        with GraknClient(uri="localhost:48555") as client:
-            with client.session(keyspace=kspace) as session:
-                with session.transaction().read() as read_transaction:
-                    if thingType == "entity":
-                        match_iterator = read_transaction.query('match $t isa '+thingName+' '+has+';get;limit '+str(limit)+';')
-                        answers = match_iterator.collect_concepts()
-                        for answer in answers:
-                            #players = answer.role_players()attributes = answer.attributes()
-                            #for player in players:
-                            #    print(player.id)
-                            jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"contains":[{ "attributes": [ '
-                            attributes = answer.attributes()
-                            for attribute in attributes:
-                                jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
-                            jsonobject = jsonobject[:-1]+'], "roles": [ '
-                            roles = answer.roles()
-                            for role in roles:
-                                jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
-                            jsonobject = jsonobject[:-1]+']}]},'
-                        jsonobject = jsonobject[:-1]+']}'
-                        return json.loads(jsonobject)
-
-                    elif thingType == "relation":
-                        match_iterator = read_transaction.query('match $t($a,$b) isa '+thingName+' '+has+';get $t;limit '+str(limit)+';')
-                        answers = match_iterator.collect_concepts()
-                        for answer in answers:
-                            players = answer.role_players()
-                            for player in players:
-                                print(player.id)
-                            jsonobject = jsonobject + json.dumps({"id":answer.id})[:-1]+',"contains":[{ "attributes": [ '
-                            attributes = answer.attributes()
-                            for attribute in attributes:
-                                jsonobject = jsonobject + json.dumps({"label":attribute.type().label(),"value":attribute.value()}, default = str)+','
-                            jsonobject = jsonobject[:-1]+'], "roles": [ '
-                            roles = answer.roles()
-                            for role in roles:
-                                jsonobject = jsonobject + json.dumps({"label":role.label()}, default = str)+','
-                            jsonobject = jsonobject[:-1]+']}]},'
-                        jsonobject = jsonobject[:-1]+']}'
-                        return json.loads(jsonobject)
-
-                    elif thingType == "attribute":
-                        abort(501)
-                    else:
-                        abort(400)
-
 class testapis(Resource):
     def get(self):
         jsonobject = json.dumps({"matched": "friendship", "matchedType": "relationship"})[:-1]+',"answers": [ '
@@ -278,14 +213,11 @@ api.add_resource(genApiFetch,
     '/fetch/<string:kspace>/<string:thing>',
     '/fetch/<string:kspace>/<string:thing>/<string:has>',
     '/fetch/<string:kspace>/<string:thing>/<int:limit>',
-    '/fetch/<string:kspace>/<string:thing>/<string:has>/<int:limit>')
+    '/fetch/<string:kspace>/<string:thing>/<string:has>/<string:get>',
+    '/fetch/<string:kspace>/<string:thing>/<string:has>/<int:limit>',
+    '/fetch/<string:kspace>/<string:thing>/<string:has>/<string:get>/<int:limit>',)
 api.add_resource(testapis, '/test')
 api.add_resource(ApiPing, '/ping')
-api.add_resource(dataFetch,
-    '/match/<string:kspace>/<string:thing>',
-    '/match/<string:kspace>/<string:thing>/<string:has>',
-    '/match/<string:kspace>/<string:thing>/<int:limit>',
-    '/match/<string:kspace>/<string:thing>/<string:has>/<int:limit>')
 
 if __name__ == '__main__':
    app.run(debug=True)
