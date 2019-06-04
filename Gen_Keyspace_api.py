@@ -7,11 +7,28 @@ import json #used to build api output
 app = Flask(__name__)
 api = Api(app)
 
+#####################
+#### api Hello World ####
+#####################
+
+class HelloWorld(Resource):
+    def get(self):
+        out = subprocess.Popen(['./grakn', 'server', 'status', 'Server_status.txt'],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT) #terminal call for ./grakn server status
+        stdout,stderr = out.communicate()
+        server = stdout.decode("utf-8").split('\n')[13] #fetches server status
+        ApiList = "Welcome to Grakn for outsystems!    "
+        ApiList = ApiList + "The server status of our grakn instance is currently: "+server.split(': ')[1]+'    '
+        ApiList = ApiList + "The current available methods are: "
+        ApiList = ApiList + "    /ping" + "    /test"
+        return ApiList
+
 #######################
 ### server ping api ###
 #######################
 
-class ApiPing(Resource): #pings grakn server for status. 
+class ApiPing(Resource): #pings grakn server for status.
     def get(self):
         out = subprocess.Popen(['./grakn', 'server', 'status', 'Server_status.txt'],
             stdout=subprocess.PIPE,
@@ -174,7 +191,7 @@ class genApiFetch(Resource):  #### basic fetch request ####
                                              #### parameter name => parameter value  => e.g: 'name="Jim"' ####
                                              #### parametre name => parameter variable => e.g: 'name=$n' ####
                                              #### multiple values are comma seperated and types of values can be mixed => e.g: 'name=$n,eyeColor="blue"' ####
-            get = "$t",    #### not mandatory #### specify variables to fetch data from => e.g: '$t,$n' ####
+            get = "$t",   #### not mandatory #### specify variables to fetch data from => e.g: '$t,$n' ####
             limit = 100): #### not mandatory #### fetch quantity limit => used to improve response time of api ####
         #### parameters ####
         split = has.split(',')
@@ -224,5 +241,7 @@ api.add_resource(testapis, '/test') #### http://127.0.0.1:5000/test
 
 api.add_resource(ApiPing, '/ping') #### http://127.0.0.1:5000/ping
 
+api.add_resource(HelloWorld,'/') #### 
+
 if __name__ == '__main__':
-   app.run(debug=True)
+   app.run(debug=True,host='127.0.0.1',port=80)
