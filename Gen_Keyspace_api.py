@@ -47,13 +47,23 @@ class VarTest(Resource): #### used to test i/o parsing ####
         has = args['has']
         get = args['get']
         limit = args['limit']
-        '\"' + '\"'
-	with GraknClient(uri="localhost:48555") as client:
+
+        with GraknClient(uri="localhost:48555") as client:
             with client.session(keyspace="dev_test2") as session:
                 with session.transaction().read() as read_transaction:
                     match_iterator = read_transaction.query('match $t isa api_auth, has api_key \"'+ApiKey+'\" , has active $a; get $a; limit 1;')
                     answers = match_iterator.collect_concepts()
-
+                    for answer in answers:
+                        if answer.is_attribute():
+                            if (answer.value() == "true"):
+                                # return authenticated
+                                pass
+                            else:
+                                abort(401)
+                        else:
+                            abort(500, '... ill get back to you on this ...')
+                    if len(answers) == 0:
+                        abort(401)
         return {"thingType":thingType,"thingName":thingName,"has":has,"get":get,"limit":limit}
 
 #########################
