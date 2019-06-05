@@ -1,15 +1,17 @@
 from flask import Flask, abort, request #flask framework
 from flask_restful import Resource, Api, reqparse #used to build restful apis using flask
 from grakn.client import GraknClient #grakn framework
+
 import subprocess #used to ping server
 import json #used to build api output
+import hashlib #used for api key authentication
 
 app = Flask(__name__)
 api = Api(app)
 
-#####################
+#########################
 #### api Hello World ####
-#####################
+#########################
 
 class HelloWorld(Resource):
     def get(self):
@@ -24,9 +26,33 @@ class HelloWorld(Resource):
         ApiList = ApiList + "    /ping" + "    /test"
         return ApiList
 
-#######################
-### server ping api ###
-#######################
+###########################
+#### api variable test ####
+###########################
+
+parser = reqparse.RequestParser()
+parser.add_argument('ApiKey', type=str, required=True, help='Api Key for the service')
+parser.add_argument('thingType', type=str, required=True, help='Thing type to search => Values restricted to; entity, attribute, relation')
+parser.add_argument('thingName', type=str, required=True, help='Name of the Thing type to search => e.g.: person (for an entity) or friendship(for a relation)')
+parser.add_argument('has', type=str, default=" ", required=False, help='Has arguments, should be in format ThingName=Value/Variable => e.g: name="jim" or name=$n')
+parser.add_argument('get', type=str, default='$t', required=False, help='Get arguments, should be in the form $a,$b,$c, ... ,$z etc. Defaults to $t, reserved for the thing being searched for.')
+parser.add_argument('limit', type=int, default=100, required=False, help='Result limiter, accepts integer values from -1 to infinity. value of -1 removes the limit. defaults to 100')
+
+class VarTest(Resource): #### used to test i/o parsing ####
+    def get(self):
+        args = parser.parse_args(strict=True)
+        ApiKey = args['ApiKey']
+        thingType = args['thingType']
+        thingName = args['thingName']
+        has = args['has']
+        get = args['get']
+        limit = args['limit']
+	
+        return {"thingType":thingType,"thingName":thingName,"has":has,"get":get,"limit":limit}
+
+#########################
+#### api server ping ####
+#########################
 
 class ApiPing(Resource): #pings grakn server for status.
     def get(self):
@@ -38,9 +64,9 @@ class ApiPing(Resource): #pings grakn server for status.
         second = stdout.decode("utf-8").split('\n')[13] #fetches server status
         return {"storage": first.split(': ')[1],"server":second.split(': ')[1]} #beautyfies output
 
-#####################
-### json builders ###
-#####################
+#######################
+#### json builders ####
+#######################
 
 class builders():
 
@@ -228,6 +254,7 @@ class testapis(Resource):
 #### api references ####
 ########################
 
+#### to be DEPRECATED in favour of better variable management ####
 api.add_resource(genApiFetch,
     '/fetch/<string:kspace>/<string:thing>',                                        #### http://127.0.0.1:5000/fetch/<keyspace_name>/<thingtype=thingname>
     '/fetch/<string:kspace>/<string:thing>/<string:has>',                           #### http://127.0.0.1:5000/fetch/<keyspace_name>/<thingtype=thingname>/<parametername=parametervalue>
@@ -237,11 +264,11 @@ api.add_resource(genApiFetch,
     '/fetch/<string:kspace>/<string:thing>/<string:has>/<int:limit>',               #### http://127.0.0.1:5000/fetch/<keyspace_name>/<thingtype=thingname>/<parametername=parametervalue>/<limitvalue>
     '/fetch/<string:kspace>/<string:thing>/<string:has>/<string:get>/<int:limit>',) #### http://127.0.0.1:5000/fetch/<keyspace_name>/<thingtype=thingname>/<parametername=parametervalue>/<getvariable>/<limitvalue>
 
-api.add_resource(testapis, '/test') #### http://127.0.0.1:5000/test
+api.add_resource(VarTest, '/test') #### http://127.0.0.1:5000/test
 
 api.add_resource(ApiPing, '/ping') #### http://127.0.0.1:5000/ping
 
-api.add_resource(HelloWorld,'/') #### 
+api.add_resource(HelloWorld,'/') #### basic server info
 
 if __name__ == '__main__':
    app.run(debug=True,host='127.0.0.1',port=80)
